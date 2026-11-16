@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build
+.next
+out
+dist
+.turbo
+
+# Env (no secrets in repo)
+.env
+.env.local
+.env.*.local
+!apps/web/.env
+!apps/web/.env.development
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads locales (credenciales / fotos)
+apps/web/uploads/
+apps/web/public/uploads/
+
+# Test
+coverage
+playwright-report
+test-results
+
+# Debug
+*.log
+npm-debug.log*

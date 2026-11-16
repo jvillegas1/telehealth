@@ -1,0 +1,11 @@
+{
+  "name": "Telehealth",
+  "short_name": "Telehealth",
+  "description": "Telepsicología con psicólogos certificados",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#3d4438",
+  "lang": "es",
+  "icons": []
+}

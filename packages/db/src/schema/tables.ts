@@ -1,0 +1,339 @@
+import { relations, sql } from "drizzle-orm";
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+import {
+  appointmentStatusEnum,
+  assessmentSessionStatusEnum,
+  consentScopeEnum,
+  credentialStatusEnum,
+  crisisResourceTypeEnum,
+  professionalProfileStatusEnum,
+  reviewModerationStatusEnum,
+  paymentStatusEnum,
+  payoutStatusEnum,
+  userRoleEnum,
+} from "./enums";
+
+export const countries = pgTable("countries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  currency: text("currency").notNull(),
+  locale: text("locale").notNull().default("es"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  name: text("name"),
+  image: text("image"),
+  passwordHash: text("password_hash"),
+  role: userRoleEnum("role").notNull().default("patient"),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  mfaSecretCiphertext: text("mfa_secret_ciphertext"),
+  mfaSecretIv: text("mfa_secret_iv"),
+  mfaSecretTag: text("mfa_secret_tag"),
+  countryId: uuid("country_id").references(() => countries.id),
+  privacySettings: jsonb("privacy_settings")
+    .$type<Record<string, boolean>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refreshToken: text("refresh_token"),
+    accessToken: text("access_token"),
+    expiresAt: integer("expires_at"),
+    tokenType: text("token_type"),
+    scope: text("scope"),
+    idToken: text("id_token"),
+    sessionState: text("session_state"),
+  },
+  (table) => [uniqueIndex("accounts_provider_unique").on(table.provider, table.providerAccountId)],
+);
+
+export const authSessions = pgTable("auth_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sessionToken: text("session_token").notNull().unique(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { withTimezone: true }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (table) => [uniqueIndex("verification_tokens_identifier_token").on(table.identifier, table.token)],
+);
+
+export const patientProfiles = pgTable(
+  "patient_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    timezone: text("timezone").notNull().default("America/Argentina/Buenos_Aires"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("patient_profiles_user_unique").on(table.userId)],
+);
+
+export const professionalProfiles = pgTable(
+  "professional_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    bio: text("bio"),
+    countryId: uuid("country_id").references(() => countries.id),
+    specialties: text("specialties")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    therapeuticApproach: text("therapeutic_approach"),
+    languages: text("languages")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    feeCents: integer("fee_cents"),
+    currency: text("currency"),
+    photoUrl: text("photo_url"),
+    photoAlt: text("photo_alt"),
+    status: professionalProfileStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    timezone: text("timezone").notNull().default("America/Argentina/Buenos_Aires"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("professional_profiles_user_unique").on(table.userId)],
+);
+
+export const credentials = pgTable("credentials", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  licenseNumber: text("license_number").notNull(),
+  issuingBody: text("issuing_body").notNull(),
+  status: credentialStatusEnum("status").notNull().default("pending"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const credentialDocuments = pgTable("credential_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  credentialId: uuid("credential_id")
+    .notNull()
+    .references(() => credentials.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  storageKey: text("storage_key").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const intakeForms = pgTable("intake_forms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientProfileId: uuid("patient_profile_id")
+    .notNull()
+    .references(() => patientProfiles.id, { onDelete: "cascade" }),
+  contentCiphertext: text("content_ciphertext").notNull(),
+  contentIv: text("content_iv").notNull(),
+  contentTag: text("content_tag").notNull(),
+  summaryCiphertext: text("summary_ciphertext"),
+  summaryIv: text("summary_iv"),
+  summaryTag: text("summary_tag"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const consents = pgTable("consents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientProfileId: uuid("patient_profile_id")
+    .notNull()
+    .references(() => patientProfiles.id, { onDelete: "cascade" }),
+  intakeFormId: uuid("intake_form_id")
+    .notNull()
+    .references(() => intakeForms.id, { onDelete: "cascade" }),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  scope: consentScopeEnum("scope").notNull().default("intake_form_share"),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
+export const availability = pgTable("availability", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appointments = pgTable("appointments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientProfileId: uuid("patient_profile_id")
+    .notNull()
+    .references(() => patientProfiles.id, { onDelete: "cascade" }),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  status: appointmentStatusEnum("status").notNull().default("pending"),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const professionalReviews = pgTable("professional_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  patientProfileId: uuid("patient_profile_id")
+    .notNull()
+    .references(() => patientProfiles.id, { onDelete: "cascade" }),
+  appointmentId: uuid("appointment_id")
+    .notNull()
+    .references(() => appointments.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  moderationStatus: reviewModerationStatusEnum("moderation_status").notNull().default("pending"),
+  reportedAt: timestamp("reported_at", { withTimezone: true }),
+  moderatedByUserId: uuid("moderated_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const therapySessions = pgTable(
+  "therapy_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    appointmentId: uuid("appointment_id")
+      .notNull()
+      .references(() => appointments.id, { onDelete: "cascade" }),
+    professionalNotesCiphertext: text("professional_notes_ciphertext"),
+    professionalNotesIv: text("professional_notes_iv"),
+    professionalNotesTag: text("professional_notes_tag"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("therapy_sessions_appointment_unique").on(table.appointmentId)],
+);
+
+export const payments = pgTable("payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id")
+    .notNull()
+    .references(() => appointments.id, { onDelete: "cascade" }),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull(),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const payouts = pgTable("payouts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paymentId: uuid("payment_id")
+    .notNull()
+    .references(() => payments.id, { onDelete: "cascade" }),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  netAmountCents: integer("net_amount_cents").notNull(),
+  status: payoutStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const crisisResources = pgTable("crisis_resources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  countryId: uuid("country_id")
+    .notNull()
+    .references(() => countries.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  resourceType: crisisResourceTypeEnum("resource_type").notNull(),
+  contactUri: text("contact_uri").notNull(),
+  active: boolean("active").notNull().default(false),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const assessmentSessions = pgTable("assessment_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientProfileId: uuid("patient_profile_id")
+    .notNull()
+    .references(() => patientProfiles.id, { onDelete: "cascade" }),
+  countryId: uuid("country_id")
+    .notNull()
+    .references(() => countries.id),
+  promptVersion: text("prompt_version").notNull(),
+  status: assessmentSessionStatusEnum("status").notNull().default("in_progress"),
+  currentStep: text("current_step").notNull().default("welcome"),
+  progressCiphertext: text("progress_ciphertext"),
+  progressIv: text("progress_iv"),
+  progressTag: text("progress_tag"),
+  intakeFormId: uuid("intake_form_id").references(() => intakeForms.id),
+  riskTriggeredAt: timestamp("risk_triggered_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorUserId: uuid("actor_user_id").references(() => users.id),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: uuid("resource_id").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const countriesRelations = relations(countries, ({ many }) => ({
+  users: many(users),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  country: one(countries, { fields: [users.countryId], references: [countries.id] }),
+  patientProfile: one(patientProfiles),
+  professionalProfile: one(professionalProfiles),
+  accounts: many(accounts),
+  authSessions: many(authSessions),
+}));

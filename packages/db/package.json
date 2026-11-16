@@ -1,0 +1,35 @@
+{
+  "name": "@telehealth/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate/cli.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.0.2",
+    "@telehealth/config": "workspace:*",
+    "@telehealth/domain": "workspace:*",
+    "drizzle-orm": "0.36.3",
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "10.16.0",
+    "@types/node": "22.9.0",
+    "@types/pg": "8.11.10",
+    "drizzle-kit": "0.28.1",
+    "eslint": "9.14.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.4"
+  }
+}

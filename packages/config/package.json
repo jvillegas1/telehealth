@@ -1,0 +1,30 @@
+{
+  "name": "@telehealth/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./env": "./src/env/index.ts",
+    "./prettier": "./prettier.config.mjs",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./tsconfig/library.json": "./tsconfig/library.json"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@eslint/js": "9.14.0",
+    "eslint": "9.14.0",
+    "globals": "15.12.0",
+    "typescript-eslint": "8.14.0",
+    "typescript": "5.6.3",
+    "vitest": "2.1.4"
+  }
+}

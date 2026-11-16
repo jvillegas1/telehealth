@@ -1,0 +1,8 @@
+{
+  "extends": "../config/tsconfig/library.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ES2022"]
+  },
+  "include": ["src/**/*", "tailwind.preset.ts"]
+}

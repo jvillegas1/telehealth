@@ -1,0 +1,1 @@
+export const ASSESSMENT_PROMPT_VERSION = "1.0.0";
