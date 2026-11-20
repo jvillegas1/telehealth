@@ -27,4 +27,11 @@ export {
   canRescheduleAppointment,
   type CancellationPolicy,
 } from "./scheduling/cancellation";
+export {
+  evaluateSessionJoin,
+  canEnableRecording,
+  SESSION_JOIN_WINDOW_MS,
+  type SessionJoinInput,
+  type SessionJoinResult,
+} from "./session/eligibility";
 export const DOMAIN_PLACEHOLDER = true as const;

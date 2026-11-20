@@ -192,9 +192,8 @@ export const consents = pgTable("consents", {
   patientProfileId: uuid("patient_profile_id")
     .notNull()
     .references(() => patientProfiles.id, { onDelete: "cascade" }),
-  intakeFormId: uuid("intake_form_id")
-    .notNull()
-    .references(() => intakeForms.id, { onDelete: "cascade" }),
+  intakeFormId: uuid("intake_form_id").references(() => intakeForms.id, { onDelete: "cascade" }),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, { onDelete: "cascade" }),
   professionalProfileId: uuid("professional_profile_id")
     .notNull()
     .references(() => professionalProfiles.id, { onDelete: "cascade" }),
@@ -323,6 +322,14 @@ export const therapySessions = pgTable(
     professionalNotesCiphertext: text("professional_notes_ciphertext"),
     professionalNotesIv: text("professional_notes_iv"),
     professionalNotesTag: text("professional_notes_tag"),
+    livekitRoomName: text("livekit_room_name"),
+    e2eeEnabled: boolean("e2ee_enabled").notNull().default(true),
+    recordingEnabled: boolean("recording_enabled").notNull().default(false),
+    recordingPatientConsentAt: timestamp("recording_patient_consent_at", { withTimezone: true }),
+    recordingProfessionalConsentAt: timestamp("recording_professional_consent_at", {
+      withTimezone: true,
+    }),
+    subtitlesEnabled: boolean("subtitles_enabled").notNull().default(false),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

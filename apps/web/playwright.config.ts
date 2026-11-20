@@ -11,8 +11,12 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 4,
   reporter: "list",
   use: {
-  baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3000",
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { browserName: "chromium" } }],
+  projects: [
+    { name: "chromium", use: { browserName: "chromium" } },
+    { name: "firefox", use: { browserName: "firefox" } },
+    { name: "webkit", use: { browserName: "webkit" } },
+  ],
 });

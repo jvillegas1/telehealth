@@ -2,9 +2,13 @@ import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { PaymentMode } from "@telehealth/config/env";
+
 import {
   bookAppointment,
   createDb,
+  ensureAppointmentPayment,
+  ensureTherapySession,
   recordScheduleAudit,
   ScheduleConflictError,
 } from "@telehealth/db";
@@ -126,6 +130,16 @@ export async function POST(request: Request): Promise<Response> {
       appointmentId: appointment.id,
       patientUserId: session.user.id,
       scheduledAt: appointment.scheduledAt,
+    });
+
+    await ensureTherapySession(db, appointment.id);
+    const feeCents = pro.feeCents ?? 0;
+    const currency = pro.currency ?? "ARS";
+    await ensureAppointmentPayment(db, {
+      appointmentId: appointment.id,
+      amountCents: feeCents > 0 ? feeCents : 1,
+      currency,
+      sandboxAutoApprove: env.PAYMENT_MODE === PaymentMode.Sandbox,
     });
 
     return NextResponse.json({ appointmentId: appointment.id });

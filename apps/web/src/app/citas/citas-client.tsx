@@ -62,6 +62,9 @@ export function CitasClient() {
                 <div className="flex flex-wrap gap-2">
                   {(item.status === "pending" || item.status === "confirmed") && (
                     <>
+                      <a href={`/sesion/${item.id}/espera`}>
+                        <Button type="button">Ir a la sesión</Button>
+                      </a>
                       <a href={`/profesionales/${item.professionalProfileId}/reservar`}>
                         <Button type="button">Reprogramar</Button>
                       </a>

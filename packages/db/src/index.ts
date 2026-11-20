@@ -11,4 +11,7 @@ export {
 } from "./scheduling/book-appointment";
 export { ScheduleConflictError, isPgUniqueViolation } from "./scheduling/errors";
 export { recordScheduleAudit } from "./scheduling/schedule-audit";
+export { ensureAppointmentPayment } from "./scheduling/ensure-payment";
+export { ensureTherapySession } from "./session/ensure-therapy-session";
+export { recordSessionAudit } from "./session/session-audit";
 export const DB_PACKAGE_READY = true as const;

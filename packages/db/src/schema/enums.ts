@@ -8,7 +8,7 @@ export const credentialStatusEnum = pgEnum("credential_status", [
   "rejected",
 ]);
 
-export const consentScopeEnum = pgEnum("consent_scope", ["intake_form_share"]);
+export const consentScopeEnum = pgEnum("consent_scope", ["intake_form_share", "session_recording"]);
 
 export const appointmentStatusEnum = pgEnum("appointment_status", [
   "pending",
