@@ -14,6 +14,17 @@ export {
   mapAssessmentTagsToSpecialties,
   specialtyLabel,
 } from "./professionals/recommendation/tag-map";
-export { scoreProfessional, rankProfessionals, rankProfessionalsWithoutIntake } from "./professionals/recommendation/score";
+export {
+  scoreProfessional,
+  rankProfessionals,
+  rankProfessionalsWithoutIntake,
+} from "./professionals/recommendation/score";
 export { professionalReviewSchema, validateReviewComment } from "./professionals/reviews/comment";
+export * from "./scheduling/types";
+export { generateBookableSlots } from "./scheduling/slots";
+export {
+  canCancelAppointment,
+  canRescheduleAppointment,
+  type CancellationPolicy,
+} from "./scheduling/cancellation";
 export const DOMAIN_PLACEHOLDER = true as const;

@@ -24,23 +24,26 @@ erDiagram
 
 ## Tablas principales
 
-| Tabla | Notas |
-|-------|--------|
-| `users` | Rol (`patient` \| `professional` \| `admin`), MFA cifrado, auth Auth.js |
-| `auth_sessions` | Sesiones Auth.js (no confundir con `therapy_sessions`) |
-| `intake_forms` | Contenido cifrado AES-256-GCM |
-| `consents` | Alcance `intake_form_share`, `revoked_at` nullable |
-| `therapy_sessions` | Notas profesionales cifradas |
-| `audit_log` | Solo INSERT (trigger bloquea UPDATE/DELETE) |
+| Tabla              | Notas                                                                   |
+| ------------------ | ----------------------------------------------------------------------- |
+| `users`            | Rol (`patient` \| `professional` \| `admin`), MFA cifrado, auth Auth.js |
+| `auth_sessions`    | Sesiones Auth.js (no confundir con `therapy_sessions`)                  |
+| `intake_forms`     | Contenido cifrado AES-256-GCM                                           |
+| `consents`         | Alcance `intake_form_share`, `revoked_at` nullable                      |
+| `therapy_sessions` | Notas profesionales cifradas                                            |
+| `audit_log`        | Solo INSERT (trigger bloquea UPDATE/DELETE)                             |
 
 ## Migraciones
 
 Orden en `packages/db/drizzle/`:
 
-1. `0000_initial.sql` — esquema Drizzle  
-2. `0002_audit_immutable.sql` — trigger `audit_log`  
-3. `0003_rls.sql` — políticas RLS  
-4. `0004_app_role.sql` — rol `telehealth_app`  
+1. `0000_initial.sql` — esquema Drizzle
+2. `0002_audit_immutable.sql` — trigger `audit_log`
+3. `0003_rls.sql` — políticas RLS
+4. `0004_app_role.sql` — rol `telehealth_app`
+5. `0006_professional_marketplace.sql` — directorio profesionales
+6. `0008_scheduling.sql` — reglas de agenda, políticas, recordatorios
+7. `0009_scheduling_rls.sql` — RLS de agenda
 
 Comando: `DATABASE_URL=... pnpm --filter @telehealth/db db:migrate`
 

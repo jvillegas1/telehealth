@@ -5,9 +5,11 @@ import { encryptField } from "../crypto/field-encryption";
 import type { Db } from "../client";
 import {
   availability,
+  cancellationPolicies,
   consents,
   countries,
   credentials,
+  professionalAvailabilityRules,
   crisisResources,
   intakeForms,
   patientProfiles,
@@ -100,6 +102,35 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
     status: "verified",
     verifiedAt: new Date(),
   });
+
+  await db.insert(cancellationPolicies).values({
+    countryId,
+    version: 1,
+    minCancelHours: 24,
+    minRescheduleHours: 24,
+    summary:
+      "Podés cancelar o reprogramar hasta 24 horas antes del inicio. Pasado ese plazo, escribí al profesional desde la plataforma.",
+    active: true,
+  });
+
+  await db.insert(professionalAvailabilityRules).values([
+    {
+      professionalProfileId: proProfile!.id,
+      dayOfWeek: 1,
+      startTime: "09:00:00",
+      endTime: "13:00:00",
+      slotMinutes: 50,
+      bufferMinutes: 10,
+    },
+    {
+      professionalProfileId: proProfile!.id,
+      dayOfWeek: 3,
+      startTime: "14:00:00",
+      endTime: "18:00:00",
+      slotMinutes: 50,
+      bufferMinutes: 10,
+    },
+  ]);
 
   const slotStart = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
   const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);

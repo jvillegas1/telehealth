@@ -8,4 +8,5 @@ export { ChatBubble } from "./components/chat-bubble";
 export { AssessmentStatePanel, type AssessmentUiState } from "./components/assessment-state-panel";
 export { ProfessionalCard, type ProfessionalCardProps } from "./components/professional-card";
 export { EmptyProfessionalsState } from "./components/empty-professionals-state";
+export { AppointmentSlotPicker, type SlotOption } from "./components/appointment-slot-picker";
 export const UI_PACKAGE_READY = true as const;

@@ -22,5 +22,6 @@ export const config = {
     "/profesionales/:path*",
     "/profesional/:path*",
     "/admin/profesionales",
+    "/citas",
   ],
 };

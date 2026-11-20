@@ -49,3 +49,20 @@ export const reviewModerationStatusEnum = pgEnum("review_moderation_status", [
   "hidden",
   "reported",
 ]);
+
+export const availabilityExceptionKindEnum = pgEnum("availability_exception_kind", [
+  "closed",
+  "extra_open",
+]);
+
+export const notificationJobKindEnum = pgEnum("notification_job_kind", [
+  "reminder_24h",
+  "reminder_1h",
+]);
+
+export const notificationJobStatusEnum = pgEnum("notification_job_status", [
+  "pending",
+  "sent",
+  "failed",
+  "cancelled",
+]);

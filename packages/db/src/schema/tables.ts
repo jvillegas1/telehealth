@@ -5,6 +5,7 @@ import {
   jsonb,
   pgTable,
   text,
+  time,
   timestamp,
   uuid,
   uniqueIndex,
@@ -13,9 +14,12 @@ import {
 import {
   appointmentStatusEnum,
   assessmentSessionStatusEnum,
+  availabilityExceptionKindEnum,
   consentScopeEnum,
   credentialStatusEnum,
   crisisResourceTypeEnum,
+  notificationJobKindEnum,
+  notificationJobStatusEnum,
   professionalProfileStatusEnum,
   reviewModerationStatusEnum,
   paymentStatusEnum,
@@ -91,7 +95,9 @@ export const verificationTokens = pgTable(
     token: text("token").notNull(),
     expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
-  (table) => [uniqueIndex("verification_tokens_identifier_token").on(table.identifier, table.token)],
+  (table) => [
+    uniqueIndex("verification_tokens_identifier_token").on(table.identifier, table.token),
+  ],
 );
 
 export const patientProfiles = pgTable(
@@ -207,16 +213,84 @@ export const availability = pgTable("availability", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const appointments = pgTable("appointments", {
+export const professionalAvailabilityRules = pgTable("professional_availability_rules", {
   id: uuid("id").primaryKey().defaultRandom(),
-  patientProfileId: uuid("patient_profile_id")
-    .notNull()
-    .references(() => patientProfiles.id, { onDelete: "cascade" }),
   professionalProfileId: uuid("professional_profile_id")
     .notNull()
     .references(() => professionalProfiles.id, { onDelete: "cascade" }),
-  status: appointmentStatusEnum("status").notNull().default("pending"),
-  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  dayOfWeek: integer("day_of_week").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  slotMinutes: integer("slot_minutes").notNull().default(50),
+  bufferMinutes: integer("buffer_minutes").notNull().default(10),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const professionalAvailabilityExceptions = pgTable("professional_availability_exceptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  kind: availabilityExceptionKindEnum("kind").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cancellationPolicies = pgTable("cancellation_policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  countryId: uuid("country_id").references(() => countries.id),
+  version: integer("version").notNull().default(1),
+  minCancelHours: integer("min_cancel_hours").notNull().default(24),
+  minRescheduleHours: integer("min_reschedule_hours").notNull().default(24),
+  summary: text("summary").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appointments = pgTable(
+  "appointments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientProfileId: uuid("patient_profile_id")
+      .notNull()
+      .references(() => patientProfiles.id, { onDelete: "cascade" }),
+    professionalProfileId: uuid("professional_profile_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    status: appointmentStatusEnum("status").notNull().default("pending"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    scheduledEndAt: timestamp("scheduled_end_at", { withTimezone: true }).notNull(),
+    rescheduledFromId: uuid("rescheduled_from_id"),
+    lockVersion: integer("lock_version").notNull().default(0),
+    cancellationPolicyVersion: integer("cancellation_policy_version"),
+    policyAcceptedAt: timestamp("policy_accepted_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("appointments_professional_slot_active")
+      .on(table.professionalProfileId, table.scheduledAt)
+      .where(sql`${table.status} in ('pending', 'confirmed')`),
+  ],
+);
+
+export const notificationJobs = pgTable("notification_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id")
+    .notNull()
+    .references(() => appointments.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: notificationJobKindEnum("kind").notNull(),
+  runAt: timestamp("run_at", { withTimezone: true }).notNull(),
+  status: notificationJobStatusEnum("status").notNull().default("pending"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  lastError: text("last_error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -322,7 +396,10 @@ export const auditLog = pgTable("audit_log", {
   action: text("action").notNull(),
   resourceType: text("resource_type").notNull(),
   resourceId: uuid("resource_id").notNull(),
-  metadata: jsonb("metadata").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+  metadata: jsonb("metadata")
+    .$type<Record<string, string>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

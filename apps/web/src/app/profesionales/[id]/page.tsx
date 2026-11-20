@@ -10,7 +10,11 @@ import { Alert, Card } from "@telehealth/ui";
 import { getServerEnv } from "@/env.server";
 import { getPublicProfessionalById } from "@/server/professionals/list";
 
-export default async function ProfesionalPublicPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProfesionalPublicPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const env = getServerEnv();
   const url = "DATABASE_URL" in env ? env.DATABASE_URL : undefined;
@@ -42,7 +46,12 @@ export default async function ProfesionalPublicPage({ params }: { params: Promis
   const [reviewAgg] = await db
     .select({ avg: avg(professionalReviews.rating), total: count() })
     .from(professionalReviews)
-    .where(and(eq(professionalReviews.professionalProfileId, id), eq(professionalReviews.moderationStatus, "visible")));
+    .where(
+      and(
+        eq(professionalReviews.professionalProfileId, id),
+        eq(professionalReviews.moderationStatus, "visible"),
+      ),
+    );
 
   const alt = pro.photoAlt?.trim() || `Foto de perfil de ${pro.displayName}`;
 
@@ -51,7 +60,14 @@ export default async function ProfesionalPublicPage({ params }: { params: Promis
       <div className="flex items-start gap-4">
         <div className="relative h-20 w-20 overflow-hidden rounded-full bg-calm-100">
           {pro.photoUrl ? (
-            <Image src={pro.photoUrl} alt={alt} fill sizes="80px" className="object-cover" priority />
+            <Image
+              src={pro.photoUrl}
+              alt={alt}
+              fill
+              sizes="80px"
+              className="object-cover"
+              priority
+            />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-xl font-semibold text-calm-800">
               {pro.displayName.slice(0, 1)}
@@ -96,20 +112,28 @@ export default async function ProfesionalPublicPage({ params }: { params: Promis
         </p>
         {reviewAgg?.total ? (
           <p>
-            <strong className="text-calm-900">Valoración:</strong> {Number(reviewAgg.avg).toFixed(1)} / 5 (
-            {reviewAgg.total} opiniones)
+            <strong className="text-calm-900">Valoración:</strong>{" "}
+            {Number(reviewAgg.avg).toFixed(1)} / 5 ({reviewAgg.total} opiniones)
           </p>
         ) : (
           <p className="text-xs">Aún no hay valoraciones públicas.</p>
         )}
       </Card>
 
-      <Link
-        href={`/profesionales/${id}/consentimiento`}
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-calm-800 px-4 text-sm font-medium text-white"
-      >
-        Continuar con consentimiento
-      </Link>
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/profesionales/${id}/reservar`}
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-calm-800 px-4 text-sm font-medium text-white"
+        >
+          Reservar turno
+        </Link>
+        <Link
+          href={`/profesionales/${id}/consentimiento`}
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-calm-200 px-4 text-sm font-medium text-calm-900"
+        >
+          Consentimiento para compartir ficha
+        </Link>
+      </div>
     </main>
   );
 }
