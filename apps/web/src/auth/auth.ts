@@ -16,7 +16,7 @@ function getDatabaseUrl(): string | undefined {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
     Credentials({
       name: "credentials",
@@ -31,12 +31,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         const db = createDb(url);
-        const [user] = await db.select().from(users).where(eq(users.email, String(credentials.email)));
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, String(credentials.email)));
         if (!user?.passwordHash) {
           return null;
         }
         const valid = await verify(user.passwordHash, String(credentials.password));
         if (!valid) {
+          return null;
+        }
+        if (user.suspendedAt) {
+          return null;
+        }
+        const requireAdminMfa = process.env["ADMIN_REQUIRE_MFA"] !== "0";
+        if (requireAdminMfa && user.role === "admin" && !user.mfaEnabled) {
           return null;
         }
         if (requiresMfa(user.role) && user.mfaEnabled) {
@@ -80,6 +90,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.id) {
           token["sub"] = user.id;
         }
+        const mfaEnabled = (user as { mfaEnabled?: boolean }).mfaEnabled;
+        if (mfaEnabled !== undefined) {
+          token["mfaEnabled"] = mfaEnabled;
+        }
+        if (role === "admin") {
+          const maxSec = Number(process.env["ADMIN_SESSION_MAX_AGE_SEC"] ?? 1200);
+          token.exp = Math.floor(Date.now() / 1000) + maxSec;
+        }
       }
       return token;
     },
@@ -87,6 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.sub ?? "";
         (session.user as { role?: UserRole }).role = token["role"] as UserRole;
+        (session.user as { mfaEnabled?: boolean }).mfaEnabled = Boolean(token["mfaEnabled"]);
       }
       return session;
     },

@@ -1,12 +1,7 @@
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 
 import type { Db } from "@telehealth/db";
-import {
-  availability,
-  credentials,
-  countries,
-  professionalProfiles,
-} from "@telehealth/db/schema";
+import { availability, credentials, countries, professionalProfiles } from "@telehealth/db/schema";
 import {
   isProfessionallyListed,
   rankProfessionals,
@@ -63,6 +58,11 @@ export async function fetchListedProfessionalRows(
       where c.professional_profile_id = ${professionalProfiles.id}
         and c.status = 'verified'
     )`,
+    sql`exists (
+      select 1 from ${countries} co
+      where co.id = ${professionalProfiles.countryId}
+        and co.active = true
+    )`,
   ];
 
   if (filters.specialty) {
@@ -103,12 +103,7 @@ export async function fetchListedProfessionalRows(
     const [nextSlot] = await db
       .select({ startsAt: availability.startsAt })
       .from(availability)
-      .where(
-        and(
-          eq(availability.professionalProfileId, row.id),
-          gte(availability.startsAt, now),
-        ),
-      )
+      .where(and(eq(availability.professionalProfileId, row.id), gte(availability.startsAt, now)))
       .orderBy(asc(availability.startsAt))
       .limit(1);
 
@@ -142,12 +137,13 @@ export async function getPublicProfessionalById(
     .select({
       profile: professionalProfiles,
       countryName: countries.name,
+      countryActive: countries.active,
     })
     .from(professionalProfiles)
     .leftJoin(countries, eq(countries.id, professionalProfiles.countryId))
     .where(eq(professionalProfiles.id, id));
 
-  if (!row) {
+  if (!row || !row.countryActive) {
     return null;
   }
 
@@ -178,5 +174,8 @@ export async function getPublicProfessionalById(
 }
 
 export async function fetchCountries(db: Db) {
-  return db.select({ id: countries.id, name: countries.name, code: countries.code }).from(countries);
+  return db
+    .select({ id: countries.id, name: countries.name, code: countries.code })
+    .from(countries)
+    .where(eq(countries.active, true));
 }

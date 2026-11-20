@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
   integer,
@@ -12,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import {
+  adminInternalRoleEnum,
   appointmentStatusEnum,
   assessmentSessionStatusEnum,
   availabilityExceptionKindEnum,
@@ -24,6 +26,8 @@ import {
   reviewModerationStatusEnum,
   paymentStatusEnum,
   payoutStatusEnum,
+  sensitiveAccessStatusEnum,
+  settlementStatusEnum,
   userRoleEnum,
 } from "./enums";
 
@@ -33,6 +37,8 @@ export const countries = pgTable("countries", {
   name: text("name").notNull(),
   currency: text("currency").notNull(),
   locale: text("locale").notNull().default("es"),
+  paymentGateway: text("payment_gateway"),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -54,6 +60,9 @@ export const users = pgTable("users", {
     .notNull()
     .default(sql`'{}'::jsonb`),
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspensionReason: text("suspension_reason"),
+  suspendedByUserId: uuid("suspended_by_user_id").references((): AnyPgColumn => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -156,6 +165,8 @@ export const credentials = pgTable("credentials", {
   status: credentialStatusEnum("status").notNull().default("pending"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedByUserId: uuid("verified_by_user_id").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -279,9 +290,7 @@ export const appointments = pgTable(
 
 export const notificationJobs = pgTable("notification_jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  appointmentId: uuid("appointment_id")
-    .notNull()
-    .references(() => appointments.id, { onDelete: "cascade" }),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, { onDelete: "cascade" }),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -337,6 +346,23 @@ export const therapySessions = pgTable(
   (table) => [uniqueIndex("therapy_sessions_appointment_unique").on(table.appointmentId)],
 );
 
+export const commissionRules = pgTable(
+  "commission_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    countryId: uuid("country_id").references(() => countries.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    rateBps: integer("rate_bps").notNull(),
+    minCommissionCents: integer("min_commission_cents"),
+    maxCommissionCents: integer("max_commission_cents"),
+    effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
+    active: boolean("active").notNull().default(true),
+    summary: text("summary").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("commission_rules_country_version").on(table.countryId, table.version)],
+);
+
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
   appointmentId: uuid("appointment_id")
@@ -345,8 +371,75 @@ export const payments = pgTable("payments", {
   amountCents: integer("amount_cents").notNull(),
   currency: text("currency").notNull(),
   status: paymentStatusEnum("status").notNull().default("pending"),
+  commissionRuleId: uuid("commission_rule_id").references(() => commissionRules.id),
+  commissionRuleVersion: integer("commission_rule_version"),
+  commissionCents: integer("commission_cents"),
+  netCents: integer("net_cents"),
+  countryId: uuid("country_id").references(() => countries.id),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const settlementBatches = pgTable("settlement_batches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  professionalProfileId: uuid("professional_profile_id")
+    .notNull()
+    .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+  status: settlementStatusEnum("status").notNull().default("calculated"),
+  grossCents: integer("gross_cents").notNull(),
+  commissionCents: integer("commission_cents").notNull(),
+  netCents: integer("net_cents").notNull(),
+  currency: text("currency").notNull(),
+  failureCode: text("failure_code"),
+  failureMessage: text("failure_message"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const settlementItems = pgTable(
+  "settlement_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    settlementBatchId: uuid("settlement_batch_id")
+      .notNull()
+      .references(() => settlementBatches.id, { onDelete: "cascade" }),
+    paymentId: uuid("payment_id")
+      .notNull()
+      .references(() => payments.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("settlement_items_payment_unique").on(table.paymentId)],
+);
+
+export const professionalPayoutCredentials = pgTable(
+  "professional_payout_credentials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    professionalProfileId: uuid("professional_profile_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    countryId: uuid("country_id")
+      .notNull()
+      .references(() => countries.id, { onDelete: "cascade" }),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    payloadCiphertext: text("payload_ciphertext").notNull(),
+    payloadIv: text("payload_iv").notNull(),
+    payloadTag: text("payload_tag").notNull(),
+    lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("professional_payout_credentials_pro_country").on(
+      table.professionalProfileId,
+      table.countryId,
+    ),
+  ],
+);
 
 export const payouts = pgTable("payouts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -395,6 +488,35 @@ export const assessmentSessions = pgTable("assessment_sessions", {
   riskTriggeredAt: timestamp("risk_triggered_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adminStaffAssignments = pgTable(
+  "admin_staff_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    internalRole: adminInternalRoleEnum("internal_role").notNull(),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+    assignedByUserId: uuid("assigned_by_user_id").references(() => users.id),
+  },
+  (table) => [uniqueIndex("admin_staff_user_role_unique").on(table.userId, table.internalRole)],
+);
+
+export const sensitiveAccessGrants = pgTable("sensitive_access_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requesterUserId: uuid("requester_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  resourceType: text("resource_type").notNull(),
+  resourceId: uuid("resource_id").notNull(),
+  reason: text("reason").notNull(),
+  status: sensitiveAccessStatusEnum("status").notNull().default("pending"),
+  approvedByUserId: uuid("approved_by_user_id").references(() => users.id),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const auditLog = pgTable("audit_log", {

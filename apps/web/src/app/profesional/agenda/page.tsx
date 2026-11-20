@@ -16,6 +16,15 @@ export default async function ProfesionalAgendaPage() {
         Definí reglas semanales. Los turnos se guardan en UTC y se muestran a cada persona en su
         zona horaria.
       </p>
+      <p className="text-sm">
+        <a href="/profesional/citas" className="font-medium text-calm-800 underline">
+          Solicitudes de cita
+        </a>
+        {" · "}
+        <a href="/profesional/cobros" className="font-medium text-calm-800 underline">
+          Cobros y liquidaciones
+        </a>
+      </p>
       <AgendaForm />
     </main>
   );

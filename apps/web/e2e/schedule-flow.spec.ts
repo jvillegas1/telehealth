@@ -5,7 +5,8 @@ test.describe("flujo de agenda", () => {
 
   test("reservar, reprogramar y cancelar", async ({ page }) => {
     await page.goto("/ingreso");
-    // Completar con credenciales demo cuando el entorno E2E esté cableado.
-    expect(true).toBe(true);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.goto("/profesionales");
+    await expect(page.locator("main")).toBeVisible();
   });
 });

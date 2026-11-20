@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -30,6 +30,21 @@ export async function saveCredentialDocument(params: {
     mimeType: params.file.type,
     fileName: params.file.name,
   };
+}
+
+export async function readCredentialDocument(params: {
+  professionalId: string;
+  storageKey: string;
+}): Promise<{ buffer: Buffer; mimeType: string; fileName: string }> {
+  const root = path.join(process.cwd(), "uploads", "credentials", params.professionalId);
+  const dest = path.join(root, params.storageKey);
+  const buffer = await readFile(dest);
+  const mimeType = params.storageKey.endsWith(".pdf")
+    ? "application/pdf"
+    : params.storageKey.endsWith(".png")
+      ? "image/png"
+      : "image/jpeg";
+  return { buffer, mimeType, fileName: params.storageKey };
 }
 
 export async function saveProfessionalPhoto(params: {

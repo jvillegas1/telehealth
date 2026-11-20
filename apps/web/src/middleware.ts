@@ -21,7 +21,7 @@ export const config = {
     "/autoevaluacion",
     "/profesionales/:path*",
     "/profesional/:path*",
-    "/admin/profesionales",
+    "/admin/:path*",
     "/citas",
   ],
 };

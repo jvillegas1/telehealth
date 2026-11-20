@@ -2,11 +2,12 @@ import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createDb } from "@telehealth/db";
 import { crisisResources } from "@telehealth/db/schema";
 
-import { auth } from "@/auth/auth";
-import { getServerEnv } from "@/env.server";
+import { recordAdminAudit } from "@telehealth/db";
+import { AdminPermission } from "@telehealth/domain";
+
+import { requireAdmin } from "@/server/admin/guard";
 
 const verifySchema = z.object({
   id: z.string().uuid(),
@@ -14,43 +15,39 @@ const verifySchema = z.object({
 });
 
 export async function GET(): Promise<Response> {
-  const session = await auth();
-  if (session?.user?.role !== "admin") {
-    return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-  }
-  const env = getServerEnv();
-  const url = "DATABASE_URL" in env ? env.DATABASE_URL : undefined;
-  if (!url) return NextResponse.json({ resources: [] });
-  const db = createDb(url);
-  const resources = await db.select().from(crisisResources).orderBy(desc(crisisResources.createdAt));
+  const gate = await requireAdmin(AdminPermission.CrisisManage);
+  if (!gate.ok) return gate.response;
+  const resources = await gate.db
+    .select()
+    .from(crisisResources)
+    .orderBy(desc(crisisResources.createdAt));
   return NextResponse.json({ resources });
 }
 
 export async function PATCH(request: Request): Promise<Response> {
-  const session = await auth();
-  if (session?.user?.role !== "admin") {
-    return NextResponse.json({ message: "No autorizado." }, { status: 403 });
-  }
+  const gate = await requireAdmin(AdminPermission.CrisisManage);
+  if (!gate.ok) return gate.response;
   const parsed = verifySchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ message: "Datos inválidos." }, { status: 400 });
   }
 
-  const env = getServerEnv();
-  const url = "DATABASE_URL" in env ? env.DATABASE_URL : undefined;
-  if (!url) {
-    return NextResponse.json({ message: "Servicio no disponible." }, { status: 503 });
-  }
-
-  const db = createDb(url);
-  await db
+  await gate.db
     .update(crisisResources)
     .set({
       active: parsed.data.active,
       verifiedAt: parsed.data.active ? new Date() : null,
-      verifiedByUserId: parsed.data.active ? session.user.id : null,
+      verifiedByUserId: parsed.data.active ? gate.userId : null,
     })
     .where(eq(crisisResources.id, parsed.data.id));
+
+  await recordAdminAudit(gate.db, {
+    actorUserId: gate.userId,
+    action: "crisis_resource_updated",
+    resourceType: "crisis_resources",
+    resourceId: parsed.data.id,
+    metadata: { active: String(parsed.data.active) },
+  });
 
   return NextResponse.json({ message: "Recurso actualizado." });
 }

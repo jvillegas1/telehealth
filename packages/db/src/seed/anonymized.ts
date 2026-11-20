@@ -6,6 +6,8 @@ import type { Db } from "../client";
 import {
   availability,
   cancellationPolicies,
+  adminStaffAssignments,
+  commissionRules,
   consents,
   countries,
   credentials,
@@ -31,6 +33,21 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
     throw new Error("No se pudo crear el país demo.");
   }
   const countryId = country.id;
+
+  const [existingRule] = await db
+    .select()
+    .from(commissionRules)
+    .where(eq(commissionRules.countryId, countryId))
+    .limit(1);
+  if (!existingRule) {
+    await db.insert(commissionRules).values({
+      countryId,
+      version: 1,
+      rateBps: 1500,
+      summary: "Comisión plataforma 15% (demo AR).",
+      active: true,
+    });
+  }
 
   const passwordHash = await hash(DEMO_PASSWORD);
 
@@ -200,8 +217,19 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
       role: "admin",
       passwordHash,
       countryId,
+      mfaEnabled: true,
     })
     .returning();
+
+  if (adminUser) {
+    for (const internalRole of ["verifier", "finance", "support"] as const) {
+      await db.insert(adminStaffAssignments).values({
+        userId: adminUser.id,
+        internalRole,
+        assignedByUserId: adminUser.id,
+      });
+    }
+  }
 
   await db.insert(crisisResources).values({
     countryId,

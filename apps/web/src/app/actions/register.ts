@@ -1,7 +1,7 @@
 "use server";
 
 import { hash } from "@node-rs/argon2";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createDb } from "@telehealth/db";
@@ -40,9 +40,15 @@ export async function registerPatient(
   }
 
   const db = createDb(url);
-  const [country] = await db.select().from(countries).where(eq(countries.code, "AR"));
+  const [country] = await db
+    .select()
+    .from(countries)
+    .where(and(eq(countries.code, "AR"), eq(countries.active, true)));
   if (!country) {
-    return { status: "error", message: "Configuración incompleta del país demo." };
+    return {
+      status: "error",
+      message: "El registro no está disponible en tu país en este momento.",
+    };
   }
 
   try {

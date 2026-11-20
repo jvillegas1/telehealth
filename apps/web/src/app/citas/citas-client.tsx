@@ -57,14 +57,19 @@ export function CitasClient() {
               <Card className="space-y-2 p-4">
                 <p className="font-medium text-calm-900">{item.professionalName}</p>
                 <p className="text-sm text-calm-800">
-                  {new Date(item.scheduledAt).toLocaleString("es-AR")} — {item.status}
+                  {new Date(item.scheduledAt).toLocaleString("es-AR")} —{" "}
+                  {item.status === "pending"
+                    ? "pendiente de aceptación del profesional"
+                    : item.status}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(item.status === "pending" || item.status === "confirmed") && (
                     <>
-                      <a href={`/sesion/${item.id}/espera`}>
-                        <Button type="button">Ir a la sesión</Button>
-                      </a>
+                      {item.status === "confirmed" ? (
+                        <a href={`/sesion/${item.id}/espera`}>
+                          <Button type="button">Ir a la sesión</Button>
+                        </a>
+                      ) : null}
                       <a href={`/profesionales/${item.professionalProfileId}/reservar`}>
                         <Button type="button">Reprogramar</Button>
                       </a>

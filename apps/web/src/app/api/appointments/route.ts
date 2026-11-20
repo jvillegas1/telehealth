@@ -2,8 +2,6 @@ import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { PaymentMode } from "@telehealth/config/env";
-
 import {
   bookAppointment,
   createDb,
@@ -12,13 +10,18 @@ import {
   recordScheduleAudit,
   ScheduleConflictError,
 } from "@telehealth/db";
-import { appointments, patientProfiles, professionalProfiles, users } from "@telehealth/db/schema";
+import {
+  appointments,
+  countries,
+  patientProfiles,
+  professionalProfiles,
+  users,
+} from "@telehealth/db/schema";
 
 import { auth } from "@/auth/auth";
 import { getServerEnv } from "@/env.server";
 import { getPublicProfessionalById } from "@/server/professionals/list";
 import { getCancellationPolicy } from "@/server/scheduling/policy";
-import { enqueueAppointmentReminders } from "@/server/scheduling/reminders";
 
 const createSchema = z.object({
   professionalProfileId: z.string().uuid(),
@@ -91,6 +94,19 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ message: "Profesional no disponible." }, { status: 404 });
   }
 
+  if (pro.countryId) {
+    const [countryRow] = await db
+      .select({ active: countries.active })
+      .from(countries)
+      .where(eq(countries.id, pro.countryId));
+    if (!countryRow?.active) {
+      return NextResponse.json(
+        { message: "Las reservas no están habilitadas en este país." },
+        { status: 403 },
+      );
+    }
+  }
+
   const [patient] = await db
     .select()
     .from(patientProfiles)
@@ -126,12 +142,6 @@ export async function POST(request: Request): Promise<Response> {
       resourceId: appointment.id,
     });
 
-    await enqueueAppointmentReminders(db, {
-      appointmentId: appointment.id,
-      patientUserId: session.user.id,
-      scheduledAt: appointment.scheduledAt,
-    });
-
     await ensureTherapySession(db, appointment.id);
     const feeCents = pro.feeCents ?? 0;
     const currency = pro.currency ?? "ARS";
@@ -139,7 +149,6 @@ export async function POST(request: Request): Promise<Response> {
       appointmentId: appointment.id,
       amountCents: feeCents > 0 ? feeCents : 1,
       currency,
-      sandboxAutoApprove: env.PAYMENT_MODE === PaymentMode.Sandbox,
     });
 
     return NextResponse.json({ appointmentId: appointment.id });

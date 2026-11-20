@@ -23,7 +23,7 @@ export async function bookAppointment(db: Db, input: BookAppointmentInput) {
         professionalProfileId: input.professionalProfileId,
         scheduledAt: input.scheduledAt,
         scheduledEndAt: input.scheduledEndAt,
-        status: "confirmed",
+        status: "pending",
         cancellationPolicyVersion: input.cancellationPolicyVersion,
         policyAcceptedAt: input.policyAcceptedAt,
         ...(input.rescheduledFromId ? { rescheduledFromId: input.rescheduledFromId } : {}),

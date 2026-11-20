@@ -76,7 +76,7 @@ export function WaitingRoomClient({ appointmentId, professionalName, joinHref }:
           Ingresar a la videollamada
         </a>
       ) : (
-        <Button type="button" disabled className="w-full">
+        <Button type="button" disabled className="w-full" aria-label="Esperando ventana de la cita">
           Esperando ventana de la cita…
         </Button>
       )}
