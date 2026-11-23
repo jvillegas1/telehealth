@@ -20,20 +20,23 @@ npx pnpm@9.15.0 dev
 
 Usuario admin demo: `admin@example.test` / `DemoPass-2025!` → [http://localhost:3000/admin](http://localhost:3000/admin)
 
+**Guía detallada:** [docs/desarrollo-local.md](docs/desarrollo-local.md) (instalación, Postgres, admin, troubleshooting).
+
 Copia `.env.example` a `apps/web/.env.local` si necesitas sobrescribir variables. Los valores por defecto de desarrollo están en `apps/web/.env.development` (sin secretos).
 
 ## Estructura
 
-| Ruta                     | Descripción                  |
-| ------------------------ | ---------------------------- |
-| `apps/web`               | Next.js (App Router), PWA    |
-| `packages/ui`            | Componentes compartidos      |
-| `packages/domain`        | Dominio (fases posteriores)  |
-| `packages/db`            | Drizzle / PostgreSQL         |
-| `packages/config`        | TS, ESLint, entornos Zod     |
-| `docs/trazabilidad.md`   | Matriz de requisitos         |
-| `docs/lanzamiento.md`    | Checklist e informe Etapa 10 |
-| `docs/adr/0001-stack.md` | ADR del stack                |
+| Ruta                       | Descripción                         |
+| -------------------------- | ----------------------------------- |
+| `apps/web`                 | Next.js (App Router), PWA           |
+| `packages/ui`              | Componentes compartidos             |
+| `packages/domain`          | Dominio (fases posteriores)         |
+| `packages/db`              | Drizzle / PostgreSQL                |
+| `packages/config`          | TS, ESLint, entornos Zod            |
+| `docs/trazabilidad.md`     | Matriz de requisitos                |
+| `docs/lanzamiento.md`      | Checklist e informe Etapa 10        |
+| `docs/desarrollo-local.md` | Instalación y ejecución paso a paso |
+| `docs/adr/0001-stack.md`   | ADR del stack                       |
 
 ## Requisitos
 
