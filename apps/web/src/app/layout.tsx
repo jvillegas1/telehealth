@@ -6,8 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Telehealth",
-  description:
-    "Plataforma de telepsicología que conecta pacientes con psicólogos certificados.",
+  description: "Plataforma de telepsicología que conecta pacientes con psicólogos certificados.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -27,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className="min-h-dvh bg-calm-50 text-calm-900 antialiased">
+    <html lang="es" suppressHydrationWarning>
+      <body className="min-h-dvh bg-calm-50 text-calm-900 antialiased" suppressHydrationWarning>
         <AppSessionProvider>{children}</AppSessionProvider>
       </body>
     </html>

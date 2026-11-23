@@ -6,7 +6,6 @@ import type { Db } from "../client";
 import {
   availability,
   cancellationPolicies,
-  adminStaffAssignments,
   commissionRules,
   consents,
   countries,
@@ -18,8 +17,8 @@ import {
   professionalProfiles,
   users,
 } from "../schema";
-
-const DEMO_PASSWORD = "DemoPass-2025!";
+import { DEMO_PASSWORD } from "./demo-credentials";
+import { ensureAdminUser } from "./ensure-admin";
 
 export async function seedAnonymized(db: Db, encryptionKey: string): Promise<void> {
   let [country] = await db.select().from(countries).where(eq(countries.code, "AR"));
@@ -83,7 +82,7 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
       role: "professional",
       passwordHash,
       countryId,
-      mfaEnabled: true,
+      mfaEnabled: false,
     })
     .returning();
 
@@ -209,27 +208,7 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
     scope: "intake_form_share",
   });
 
-  const [adminUser] = await db
-    .insert(users)
-    .values({
-      email: "admin@example.test",
-      name: "Admin Demo",
-      role: "admin",
-      passwordHash,
-      countryId,
-      mfaEnabled: true,
-    })
-    .returning();
-
-  if (adminUser) {
-    for (const internalRole of ["verifier", "finance", "support"] as const) {
-      await db.insert(adminStaffAssignments).values({
-        userId: adminUser.id,
-        internalRole,
-        assignedByUserId: adminUser.id,
-      });
-    }
-  }
+  const admin = await ensureAdminUser(db, encryptionKey);
 
   await db.insert(crisisResources).values({
     countryId,
@@ -239,11 +218,11 @@ export async function seedAnonymized(db: Db, encryptionKey: string): Promise<voi
     contactUri: "https://example.test/crisis-demo",
     active: true,
     verifiedAt: new Date(),
-    verifiedByUserId: adminUser!.id,
+    verifiedByUserId: admin.userId,
     sortOrder: 1,
   });
 
-  void adminUser;
+  void admin;
 
   return void 0;
 }

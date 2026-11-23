@@ -10,11 +10,15 @@ npx pnpm@9.15.0 test
 npx pnpm@9.15.0 build
 ```
 
-Desarrollo local de la app web:
+Desarrollo local de la app web (requiere **PostgreSQL** para login y datos):
 
 ```bash
+docker compose up -d
+npx pnpm@9.15.0 db:create-admin
 npx pnpm@9.15.0 dev
 ```
+
+Usuario admin demo: `admin@example.test` / `DemoPass-2025!` → [http://localhost:3000/admin](http://localhost:3000/admin)
 
 Copia `.env.example` a `apps/web/.env.local` si necesitas sobrescribir variables. Los valores por defecto de desarrollo están en `apps/web/.env.development` (sin secretos).
 

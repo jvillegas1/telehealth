@@ -13,7 +13,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/migrate/cli.ts"
+    "db:migrate": "tsx src/migrate/cli.ts",
+    "db:create-admin": "tsx src/seed/create-admin.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.0.2",

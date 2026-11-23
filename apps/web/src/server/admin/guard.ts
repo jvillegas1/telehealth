@@ -32,7 +32,7 @@ export async function requireAdmin(permission?: AdminPermission): Promise<AdminG
 
   const db = createDb(url);
   const [userRow] = await db.select().from(users).where(eq(users.id, session.user.id));
-  const requireMfa = process.env["ADMIN_REQUIRE_MFA"] !== "0";
+  const requireMfa = process.env["REQUIRE_MFA"] !== "0" && process.env["ADMIN_REQUIRE_MFA"] !== "0";
   if (requireMfa && !userRow?.mfaEnabled) {
     return {
       ok: false,

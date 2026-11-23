@@ -15,6 +15,11 @@ function getDatabaseUrl(): string | undefined {
   return "DATABASE_URL" in env ? env.DATABASE_URL : undefined;
 }
 
+/** `REQUIRE_MFA=0` desactiva TOTP en login y la exigencia MFA para admin (solo dev/local). */
+function isMfaEnforced(): boolean {
+  return process.env["REQUIRE_MFA"] !== "0";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
@@ -30,53 +35,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!url || !credentials?.email || !credentials?.password) {
           return null;
         }
-        const db = createDb(url);
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, String(credentials.email)));
-        if (!user?.passwordHash) {
-          return null;
-        }
-        const valid = await verify(user.passwordHash, String(credentials.password));
-        if (!valid) {
-          return null;
-        }
-        if (user.suspendedAt) {
-          return null;
-        }
-        const requireAdminMfa = process.env["ADMIN_REQUIRE_MFA"] !== "0";
-        if (requireAdminMfa && user.role === "admin" && !user.mfaEnabled) {
-          return null;
-        }
-        if (requiresMfa(user.role) && user.mfaEnabled) {
-          const code = String(credentials.totp ?? "");
-          if (!user.mfaSecretCiphertext || !user.mfaSecretIv || !user.mfaSecretTag) {
+        try {
+          const db = createDb(url);
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, String(credentials.email)));
+          if (!user?.passwordHash) {
             return null;
           }
-          const env = getServerEnv();
-          const key = env.ENCRYPTION_KEY;
-          if (!key) return null;
-          const { decryptField } = await import("@telehealth/db");
-          const secret = decryptField(
-            {
-              ciphertext: user.mfaSecretCiphertext,
-              iv: user.mfaSecretIv,
-              tag: user.mfaSecretTag,
-            },
-            key,
-          );
-          if (!authenticator.check(code, secret)) {
+          const valid = await verify(user.passwordHash, String(credentials.password));
+          if (!valid) {
             return null;
           }
+          if (user.suspendedAt) {
+            return null;
+          }
+          const adminMfaPolicy = process.env["ADMIN_REQUIRE_MFA"] !== "0";
+          if (isMfaEnforced() && adminMfaPolicy && user.role === "admin" && !user.mfaEnabled) {
+            return null;
+          }
+          if (isMfaEnforced() && requiresMfa(user.role) && user.mfaEnabled) {
+            const code = String(credentials.totp ?? "");
+            if (!user.mfaSecretCiphertext || !user.mfaSecretIv || !user.mfaSecretTag) {
+              return null;
+            }
+            const env = getServerEnv();
+            const key = env.ENCRYPTION_KEY;
+            if (!key) return null;
+            const { decryptField } = await import("@telehealth/db");
+            const secret = decryptField(
+              {
+                ciphertext: user.mfaSecretCiphertext,
+                iv: user.mfaSecretIv,
+                tag: user.mfaSecretTag,
+              },
+              key,
+            );
+            if (!authenticator.check(code, secret)) {
+              return null;
+            }
+          }
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role as UserRole,
+            mfaEnabled: user.mfaEnabled,
+          };
+        } catch (error) {
+          console.error("[auth] authorize failed (¿PostgreSQL activo y migrado?)", error);
+          return null;
         }
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role as UserRole,
-          mfaEnabled: user.mfaEnabled,
-        };
       },
     }),
   ],

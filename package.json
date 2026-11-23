@@ -12,6 +12,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e:launch": "pnpm --filter @telehealth/web exec playwright install chromium firefox webkit && pnpm --filter @telehealth/web test:e2e:launch",
+    "db:create-admin": "pnpm --filter @telehealth/db db:create-admin",
+    "db:up": "docker compose up -d",
+    "db:setup": "docker compose up -d --wait && pnpm db:create-admin",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
     "prepare": "husky"
